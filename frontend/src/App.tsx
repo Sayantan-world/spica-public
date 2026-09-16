@@ -1,23 +1,49 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { Persona, Affect, ChatMessage, LatencyLog } from "./types";
-import { resetSession, checkHealth } from "./lib/api";
+import type { AccountUser } from "./lib/api";
+import { checkHealth, fetchAccountMe, logoutAccount } from "./lib/api";
 import { useWebcam } from "./hooks/useWebcam";
 import { useSensing } from "./hooks/useSensing";
-import { PersonaSelector } from "./components/PersonaSelector";
-import { ChatPanel } from "./components/ChatPanel";
+import { useTheme } from "./hooks/useTheme";
+import { AccountNav } from "./components/AccountNav";
+import { AccountChatPanel } from "./components/AccountChatPanel";
 import { WebcamSensing } from "./components/WebcamSensing";
 import { SensingStatus } from "./components/SensingStatus";
-import { LatencyMetrics } from "./components/LatencyMetrics";
+import { PictureBoard } from "./components/PictureBoard";
+import { LandingPage } from "./components/LandingPage";
+import { IconLogout, IconMoon, IconSun } from "./components/Icons";
 import "./App.css";
 
+function ThemeToggle({ className = "" }: { className?: string }) {
+  const { isDark, toggleTheme } = useTheme();
+  return (
+    <button
+      type="button"
+      className={`theme-toggle ${className}`.trim()}
+      onClick={toggleTheme}
+      title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+    >
+      {isDark ? <IconSun size={18} /> : <IconMoon size={18} />}
+    </button>
+  );
+}
+
 function App() {
-  const [persona, setPersona] = useState<Persona | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [latency, setLatency] = useState<LatencyLog | null>(null);
+  const [accountUser, setAccountUser] = useState<AccountUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [webcamEnabled, setWebcamEnabled] = useState(false);
-  const [affectOverride, setAffectOverride] = useState<Affect | null>(null);
   const [backendReady, setBackendReady] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pictureBoardOpen, setPictureBoardOpen] = useState(true);
+  const quickPhraseRef = useRef<((text: string) => Promise<void>) | null>(null);
   const healthPoll = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  const bindQuickPhrase = useCallback(
+    (fn: ((text: string) => Promise<void>) | null) => {
+      quickPhraseRef.current = fn;
+    },
+    [],
+  );
 
   useEffect(() => {
     async function poll() {
@@ -32,14 +58,23 @@ function App() {
     return () => clearInterval(healthPoll.current);
   }, []);
 
+  useEffect(() => {
+    fetchAccountMe()
+      .then(setAccountUser)
+      .catch(() => setAccountUser(null))
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [accountUser]);
+
   const {
     sensing,
     ready,
     initError,
     init,
     processFrame,
-    clearAirWrittenText,
-    clearHeadSignal,
     resetCalibration,
   } = useSensing();
 
@@ -65,28 +100,73 @@ function App() {
     }
   }
 
-  async function handlePersonaSelect(p: Persona) {
-    setPersona(p);
-    setMessages([]);
-    setLatency(null);
-    try {
-      await resetSession(p.id);
-    } catch {
-      // Session reset failed — non-critical, continue with fresh UI state
-    }
+  async function handleLogout() {
+    await logoutAccount();
+    setAccountUser(null);
+  }
+
+  if (!authChecked) {
+    return (
+      <div className="app-boot">
+        <p>Loading…</p>
+      </div>
+    );
+  }
+
+  if (!accountUser) {
+    return (
+      <LandingPage
+        themeToggle={<ThemeToggle />}
+        backendReady={backendReady}
+        onUserChange={setAccountUser}
+      />
+    );
   }
 
   return (
-    <div className="app-layout">
-      <aside className="sidebar">
-        <h1 className="app-title">
-          <img src="/favicon.svg" alt="" className="app-logo" />
-          AAC Chatbot
-        </h1>
+    <div className={`app-layout ${sidebarOpen ? "sidebar-open" : ""}`}>
+      <button
+        type="button"
+        className="sidebar-toggle"
+        aria-expanded={sidebarOpen}
+        aria-controls="app-sidebar"
+        onClick={() => setSidebarOpen((v) => !v)}
+      >
+        {sidebarOpen ? "Close menu" : "Menu"}
+      </button>
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Close menu"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-        <PersonaSelector
-          selected={persona?.id ?? null}
-          onSelect={handlePersonaSelect}
+      <aside id="app-sidebar" className="sidebar">
+        <div className="app-title-row">
+          <h1 className="app-title">
+            <img src="/favicon.svg" alt="" className="app-logo" />
+            SPICA
+          </h1>
+          <div className="app-title-actions">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="icon-text-btn"
+              onClick={handleLogout}
+              title="Log out"
+            >
+              <IconLogout size={16} />
+              <span>Log out</span>
+            </button>
+          </div>
+        </div>
+
+        <AccountNav
+          onUserChange={setAccountUser}
+          pictureBoardOpen={pictureBoardOpen}
+          onPictureBoardToggle={() => setPictureBoardOpen((v) => !v)}
         />
 
         <div className="sidebar-section">
@@ -99,46 +179,26 @@ function App() {
             Enable webcam
           </label>
           <WebcamSensing videoRef={videoRef} active={active} error={error || initError} />
+          {pictureBoardOpen && (
+            <PictureBoard
+              voice={accountUser.voice_preference}
+              onPhraseSpoken={(text) => quickPhraseRef.current?.(text)}
+            />
+          )}
           <SensingStatus sensing={sensing} webcamActive={active} />
         </div>
-
-        <div className="sidebar-section">
-          <label htmlFor="affect-override">Affect override</label>
-          <select
-            id="affect-override"
-            value={affectOverride ?? "auto"}
-            onChange={(e) =>
-              setAffectOverride(
-                e.target.value === "auto" ? null : (e.target.value as Affect)
-              )
-            }
-          >
-            <option value="auto">Auto (webcam)</option>
-            <option value="HAPPY">HAPPY</option>
-            <option value="FRUSTRATED">FRUSTRATED</option>
-            <option value="NEUTRAL">NEUTRAL</option>
-            <option value="SURPRISED">SURPRISED</option>
-          </select>
-        </div>
-
-        <LatencyMetrics latency={latency} />
       </aside>
 
       <main className="main-content">
-        <ChatPanel
-          userId={persona?.id ?? null}
-          personaName={persona?.name ?? ""}
-          sensing={sensing}
-          affectOverride={affectOverride}
-          onAirTextConsumed={clearAirWrittenText}
-          onHeadSignalConsumed={clearHeadSignal}
-          messages={messages}
-          setMessages={setMessages}
-          onLatency={setLatency}
+        <AccountChatPanel
+          user={accountUser}
           backendReady={backendReady}
+          webcamEnabled={webcamEnabled && active}
+          pictureBoardOpen={pictureBoardOpen}
+          sensing={sensing}
+          bindQuickPhrase={bindQuickPhrase}
         />
       </main>
-
     </div>
   );
 }

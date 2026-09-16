@@ -8,76 +8,43 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    # ── Paths ──────────────────────────────────────────────────────────────────
-    data_dir: Path = Path("data")
-    vector_store_dir: Path = Path("data/vector_store")
-    memories_dir: Path = Path("data/memories")
-    users_json: Path = Path("data/users.json")
-    logs_dir: Path = Path("logs")
+    logs_dir: Path = Path(".logs")
+    user_data_dir: Path = Path("backend/process_user_data/.files")
+    # Shared Magpie WAVs for picture-board phrases (6 voices × 12 phrases).
+    phrase_audio_dir: Path = Path("data/.phrase_audio")
 
-    # ── Retrieval ────────────────────────────────────────────────────────────
-    embed_model: str = "BAAI/bge-small-en-v1.5"
-    retrieval_top_k: int = 5
-    retrieval_rerank_k: int = 3
-    retrieval_fast_k: int = 2  # used when affect == FRUSTRATED
-    # Minimum cosine score for a chunk to be used in turnaround re-retrieval.
-    # Below this, we'd rather fall back to original chunks than serve clearly
-    # off-topic memories just to "look different."
-    turnaround_min_score: float = 0.45
+    database_url: str = "postgresql://spica:spica@127.0.0.1:5432/spica"
+    max_text_files_per_user: int = 5
+    max_text_file_chars: int = 10000
 
-    rerank_enabled: bool = True
-    rerank_pool_k: int = 12  # wider pre-rerank fetch per personal sub-intent
-    rerank_fast_pool_k: int = 8  # smaller pool on the FRUSTRATED fast path
-    rerank_lambda: float = 0.7  # MMR: relevance vs diversity (1.0 = pure cosine)
-    rerank_history_turns: int = 2  # last-N user turns folded into context vector
-    rerank_query_weight: float = 0.7  # current query weight vs history mean
+    user_embed_model: str = "nomic-ai/nomic-embed-text-v1.5"
+    user_embed_dim: int = 768
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_model: str = "gpt-5.6-luna"
+    openai_reasoning_effort: str = "medium"
+    openai_max_input_tokens: int = 4096
+    openai_chat_max_input_tokens: int = 8192
+    openai_timeout_s: float = 90.0
+    openai_api_key: str = ""
+    openai_key_path: Path = Path("backend/.llm_enpoints/.openai_key")
+    max_chat_sessions_per_user: int = 5
+    max_chat_turns_per_session: int = 20
 
-    # LLM tiers — both hit Ollama Cloud via OpenAI-compatible endpoint.
-    # Same model on both tiers for now; swap one when a larger cloud model
-    # is provisioned and the latency-fallback should branch.
-    primary_model: str = "gemma4:31b-cloud"
-    primary_base_url: str = "http://localhost:11434/v1"
-    primary_api_key: str = "ollama"
-
-    fallback_model: str = "gemma4:31b-cloud"
-    fallback_base_url: str = "http://localhost:11434/v1"
-    fallback_api_key: str = "ollama"
-
-    # Active tier: "primary" | "fallback"
-    active_llm_tier: str = "primary"
-
-    # Vision model used only by /ink/recognize (needs image_url support).
-    # Defaults to Gemini flash via the OpenAI-compatible endpoint.
-    ink_vision_model: str = "gemini-2.0-flash"
-    ink_vision_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    ink_vision_api_key: str = ""
-
-    # off | strip | full | suppress
-    thinking_mode: str = "off"
-    thinking_token_budget: int = 4096
-    fallback_latency_threshold: float = 3.5  # seconds before tier fallback
-
-    # ── Generation ────────────────────────────────────────────────────────────
-    max_tokens_happy: int = 150
-    max_tokens_neutral: int = 100
-    max_tokens_frustrated: int = 60
-    max_tokens_surprised: int = 80
-
-    # ── Sensing ───────────────────────────────────────────────────────────────
-    affect_ema_alpha: float = 0.3  # exponential moving average smoothing
-    gaze_dwell_threshold_s: float = 1.5
-    air_write_velocity_start: int = 15  # px/frame — stroke begin threshold
-    air_write_velocity_end: int = 5  # px/frame — stroke end threshold
-    air_write_end_gap_ms: int = 200  # ms of stillness to end a stroke
-    conflict_overlap_ms: int = 500  # audio + gesture co-occurrence window
-
-    # ── Evaluation ────────────────────────────────────────────────────────────
-    slo_target_s: float = 6.0  # max acceptable response latency (seconds)
-    evals_enabled: bool = True
-    nli_model: str = "cross-encoder/nli-deberta-v3-small"
-    faithfulness_threshold: float = (
-        0.5  # entailment prob for a sentence to count as grounded
-    )
+    # NVIDIA NIM speech — Riva gRPC on NVCF (not HTTP /v1/audio/*).
+    nim_api_key: str = ""
+    nim_key_path: Path = Path("backend/.llm_enpoints/.nim_key")
+    nim_grpc_server: str = "grpc.nvcf.nvidia.com:443"
+    nim_whisper_model: str = "openai/whisper-large-v3"
+    nim_whisper_function_id: str = "b702f636-f60c-4a3d-a6f4-f3568c13bd7d"
+    # Whisper docs use "en"; BCP-47 also accepted by some builds.
+    nim_whisper_language: str = "en"
+    # Magpie multilingual (no voice-prompt required). Zeroshot needs a reference clip.
+    nim_magpie_model: str = "nvidia/magpie-tts-multilingual"
+    nim_magpie_function_id: str = "877104f7-e885-42b9-8de8-f6e4c6303969"
+    nim_magpie_language: str = "en-US"
+    nim_magpie_voice: str = "Magpie-Multilingual.EN-US.Jason"
+    nim_magpie_sample_rate_hz: int = 22050
+    max_speech_bytes: int = 8_000_000
 
 
 settings = Settings()

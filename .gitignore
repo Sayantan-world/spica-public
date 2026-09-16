@@ -1,3 +1,13 @@
+# Hidden local/runtime files and dirs (never push)
+.*
+!.gitignore
+!.env.example
+!.pre-commit-config.yaml
+!.dockerignore
+!frontend/.gitignore
+!.gitkeep
+!**/.gitkeep
+
 # Python
 __pycache__/
 *.py[cod]
@@ -12,14 +22,28 @@ build/
 .venv/
 venv/
 env/
+spica/
 
-# Environment secrets
+# Environment secrets and host keys
 .env
+backend/.llm_enpoints/
+backend/llm_enpoints/
+
+# Uploaded account files
+backend/process_user_data/.files/
+backend/process_user_data/files/
+
+# Shared picture-board Magpie WAVs (generated at backend startup)
+data/.phrase_audio/
+data/phrase_audio/
 
 # Data — indexes are rebuilt from source; do NOT commit binaries
 data/vector_store/
 data/pick_index/
 data/faiss_store/
+
+# Host package paths
+.packages.env.sh
 
 # MLflow
 mlflow.db
@@ -27,8 +51,11 @@ mlruns/
 
 # Personal / non-source files
 ProjectDetails.pdf
+.cmds
+.https-spicaub.md
 
 # Per-turn JSONL logs (contain user conversation content)
+.logs/
 logs/
 
 # Latency CSVs (legacy)
@@ -38,6 +65,7 @@ timings.csv
 # Frontend
 node_modules/
 frontend/dist/
+frontend/.npmrc
 
 # IDE
 .vscode/

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONDA_ENV="aac-chatbot"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
+
+# shellcheck disable=SC1091
+source "${ROOT}/packages.env.sh"
+
 ENV_FILE=".env"
 ENV_EXAMPLE=".env.example"
 
@@ -10,23 +15,23 @@ ok()    { printf "\033[1;32m==> %s\033[0m\n" "$1"; }
 warn()  { printf "\033[1;33m==> %s\033[0m\n" "$1"; }
 fail()  { printf "\033[1;31mERROR: %s\033[0m\n" "$1"; exit 1; }
 
-command -v conda >/dev/null 2>&1 || fail "conda not found. Install Miniconda/Anaconda first."
+mkdir -p "${PACKAGES_DIR}"/{bin,uv-cache,uv-python,uv-tools,hf-cache,xdg-cache,npm-cache,pnpm,pnpm-store}
 
-if conda info --envs | grep -q "^${CONDA_ENV} "; then
-  info "Conda env '$CONDA_ENV' already exists — reusing it"
+command -v uv >/dev/null 2>&1 || fail "uv not found on PATH (expected ${PACKAGES_DIR}/bin/uv)."
+
+if [ -x "${SPICA_VENV}/bin/python" ]; then
+  info "uv env at ${SPICA_VENV} already exists — reusing it"
 else
-  info "Creating conda env '$CONDA_ENV' (Python 3.12)..."
-  conda create -n "$CONDA_ENV" python=3.12 -y --quiet
-  ok "Conda env created"
+  info "Creating uv env 'spica' at ${SPICA_VENV} (Python 3.12)..."
+  uv venv "${SPICA_VENV}" --python 3.12
+  ok "uv env created"
 fi
 
-# Activate inside this script
-eval "$(conda shell.bash hook)"
-conda activate "$CONDA_ENV"
+# shellcheck disable=SC1091
+source "${SPICA_VENV}/bin/activate"
 
-info "Installing Python dependencies..."
-pip install --upgrade pip --quiet
-pip install -r requirements.txt --quiet
+info "Installing CPU-only Python dependencies with uv pip into ${SPICA_VENV}..."
+uv pip install --python "${SPICA_VENV}/bin/python" --index-strategy unsafe-best-match -r requirements.txt
 ok "Dependencies installed"
 
 if [ -f "$ENV_FILE" ]; then
@@ -34,37 +39,26 @@ if [ -f "$ENV_FILE" ]; then
 else
   info "Copying $ENV_EXAMPLE → $ENV_FILE..."
   cp "$ENV_EXAMPLE" "$ENV_FILE"
-  ok ".env created — edit it to configure Ollama Cloud model names"
+  ok ".env created — set OPENAI_API_KEY (or backend/.llm_enpoints/.openai_key)"
 fi
 
-info "Building vector indexes (downloads BGE-small embedder on first run)..."
-python -m backend.retrieval.vector_store
-ok "Vector indexes built in data/vector_store/"
-
-# Ollama: tiers point at Ollama Cloud — no local pull needed. Just check the
-# daemon is reachable so the OpenAI-compatible proxy works.
-if ! command -v ollama >/dev/null 2>&1; then
-  warn "Ollama not installed — install it from https://ollama.com then re-run this script"
-fi
+mkdir -p backend/process_user_data/.files .logs data/.phrase_audio backend/.llm_enpoints
 
 if command -v pnpm >/dev/null 2>&1; then
-  info "Installing frontend dependencies..."
-  pnpm --dir frontend install --silent
+  info "Installing frontend dependencies (pnpm store: ${PACKAGES_DIR}/pnpm-store)..."
+  pnpm --dir frontend install --store-dir "${PACKAGES_DIR}/pnpm-store" --silent
   ok "Frontend dependencies installed"
 else
-  warn "pnpm not found — install it (npm i -g pnpm) then run: pnpm --dir frontend install"
+  warn "pnpm not found — install Node 22+ under ${PACKAGES_DIR}/node"
 fi
 
 echo ""
 ok "Setup complete!"
 echo ""
 echo "  Activate the environment:"
-echo "    conda activate $CONDA_ENV"
+echo "    source ${SPICA_VENV}/bin/activate"
 echo ""
-echo "  Run the CLI:"
-echo "    python -m backend.main --debug"
-echo ""
-echo "  Or start the full stack:"
-echo "    uvicorn backend.api.main:app --reload    # FastAPI on :8000"
-echo "    pnpm --dir frontend dev                  # React on :7550"
+echo "  Start the full stack:"
+echo "    ./run.sh"
+echo "    # FastAPI on :5002 · React on :5001"
 echo ""

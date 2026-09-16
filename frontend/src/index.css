@@ -16,6 +16,8 @@
   --fail-bg: #f5e3e0;
   --code-bg: #f4f3ec;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --icon-btn-bg: rgba(255, 255, 255, 0.7);
+  --icon-btn-hover: rgba(201, 100, 66, 0.12);
 
   --sans: "Styrene B", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --heading: "Copernicus", "Tiempos Text", "Iowan Old Style", Georgia, serif;
@@ -29,6 +31,29 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme="dark"] {
+  --bg: #171613;
+  --surface: #22201c;
+  --sidebar-bg: #1d1b17;
+  --text: #ebe6da;
+  --text-muted: #a8a193;
+  --text-faint: #7d776c;
+  --border: #34312b;
+  --border-strong: #4a453c;
+  --accent: #d97852;
+  --accent-hover: #e48a66;
+  --accent-soft: rgba(217, 120, 82, 0.18);
+  --pass: #4caf77;
+  --pass-bg: rgba(76, 175, 119, 0.16);
+  --fail: #e57368;
+  --fail-bg: rgba(229, 115, 104, 0.16);
+  --code-bg: #2a2722;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --icon-btn-bg: rgba(255, 255, 255, 0.06);
+  --icon-btn-hover: rgba(217, 120, 82, 0.2);
+  color-scheme: dark;
 }
 
 body {

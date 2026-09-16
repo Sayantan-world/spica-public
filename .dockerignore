@@ -7,14 +7,21 @@
 .code-review-graph
 .ruff_cache
 .pre-commit-config.yaml
+.cmds
+.packages.env.sh
+.logs
+.https-spicaub.md
 ruff.toml
 
 # Keep build deterministic — rebuild indexes inside the container
 data/vector_store/
 data/pick_index/
 data/faiss_store/
+data/.phrase_audio/
+data/phrase_audio/
 
 # Logs and ephemeral state
+.logs/
 logs/
 mlflow.db
 mlruns/
@@ -30,14 +37,19 @@ mlruns/
 # Frontend build artefacts (rebuilt in Docker stage 1)
 frontend/node_modules/
 frontend/dist/
+frontend/.npmrc
+
+# Secrets / uploads
+.env
+backend/.llm_enpoints/
+backend/llm_enpoints/
+backend/process_user_data/.files/
+backend/process_user_data/files/
 
 # Misc
 .DS_Store
 *.swp
-.env
 ProjectDetails.pdf
 docs/
-
-README.md
 lessons.md
 references.md
